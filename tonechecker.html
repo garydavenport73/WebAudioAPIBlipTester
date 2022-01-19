@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <div>
+        <label for="frequency">Frequency</label>
+        <input type="number" name="frequency" id="frequency" value=440>
+    </div>
+
+    <div>
+        <label for="bass">Bass</label>
+        <input type="number" name="bass" id="bass" value=0>
+    </div>
+
+    <div>
+        <label for="mid">Mid</label>
+        <input type="number" name="mid" id="mid" value=0>
+    </div>
+
+    <div>
+        <label for="treble">Treble</label>
+        <input type="number" name="treble" id="treble" value=0>
+    </div>
+
+    <div>
+        <label for="duration">Duratin (ms)</label>
+        <input type="number" name="duration" id="duration" value=200>
+    </div>
+
+    <div>
+        <button id='sine' onclick='testSound(this.id)'>Sine</button>
+        <button id='square' onclick='testSound(this.id)'>Square</button>
+        <button id='sawtooth' onclick='testSound(this.id)'>Sawtooth</button>
+        <button id='triangle' onclick='testSound(this.id)'>Triangle</button>
+    </div>
+    <hr>
+
+
+
+    <!-- // "sine", "square", "sawtooth", "triangle" and "custom". The default is "sine". -->
+
+
+
+
+    <script>
+
+class Tone {
+    constructor(frequencyHz = 440, durationMS = 1000, type = "sine", bass = 0, mid = 0, treble = 0) {
+        this.frequencyHz = frequencyHz;
+        this.durationMS = durationMS;
+        this.type = type;
+        this.bass = bass;
+        this.mid = mid;
+        this.treble = treble;
+
+        // this.isPlaying = false;
+        this.audioCtx = new(window.AudioContext || window.webkitAudioContext);
+        this.oscillator = this.audioCtx.createOscillator();
+        this.oscillator.frequency.setValueAtTime(this.frequencyHz, this.audioCtx.currentTime);
+        this.oscillator.type = this.type;
+        this.gainControl = this.audioCtx.createGain();
+        this.gainControl.gain.setValueAtTime(0, this.audioCtx.currentTime);
+
+        this.bassControl = this.audioCtx.createBiquadFilter();
+        this.bassControl.type = "lowshelf";
+        this.bassControl.frequency.setValueAtTime(210, this.audioCtx.currentTime);
+        this.bassControl.gain.setValueAtTime(this.bass, this.audioCtx.currentTime);
+
+        this.midControl = this.audioCtx.createBiquadFilter();
+        this.midControl.type = "peaking";
+        //http://www.learningaboutelectronics.com/Articles/Quality-factor-calculator.php#answer
+        this.midControl.Q.setValueAtTime(0.375, this.audioCtx.currentTime);
+        this.midControl.frequency.setValueAtTime(590, this.audioCtx.currentTime);
+        this.midControl.gain.setValueAtTime(this.mid, this.audioCtx.currentTime);
+
+        this.trebleControl = this.audioCtx.createBiquadFilter();
+        this.trebleControl.type = "highshelf";
+        this.trebleControl.frequency.setValueAtTime(1200, this.audioCtx.currentTime);
+        this.trebleControl.gain.setValueAtTime(this.treble, this.audioCtx.currentTime);
+
+        // "sine", "square", "sawtooth", "triangle" and "custom". The default is "sine".
+
+        this.oscillator.connect(this.bassControl);
+
+        this.bassControl.connect(this.midControl);
+
+        this.midControl.connect(this.trebleControl);
+
+        this.trebleControl.connect(this.gainControl);
+
+        this.gainControl.connect(this.audioCtx.destination);
+
+        //this.oscillator.connect(this.gainControl);
+        //this.gainControl.connect(this.audioCtx.destination);
+
+        this.oscillator.start();
+    }
+
+    play() {
+
+        //console.log(this.bass, this.mid, this.treble);
+        console.log(this.cancelStop === undefined);
+        if (this.cancelStop === undefined) {
+            //do nothing
+        } else {
+            clearTimeout(this.cancelStop);
+        }
+        this.gainControl.gain.cancelScheduledValues(this.audioCtx.currentTime);
+
+        this.gainControl.gain.setValueAtTime(this.gainControl.gain.value, this.audioCtx.currentTime);
+        this.gainControl.gain.linearRampToValueAtTime(1, this.audioCtx.currentTime + 0.03);
+
+        this.cancelStop = setTimeout(() => {
+            this.gainControl.gain.setValueAtTime(this.gainControl.gain.value, this.audioCtx.currentTime);
+            this.gainControl.gain.linearRampToValueAtTime(0, this.audioCtx.currentTime + 0.03);
+        }, this.durationMS - 30);
+    }
+
+    stop() {
+        clearTimeout(this.cancelStop);
+        this.gainControl.gain.setValueAtTime(this.gainControl.gain.value, this.audioCtx.currentTime);
+        this.gainControl.gain.linearRampToValueAtTime(0, this.audioCtx.currentTime + 0.03);
+    }
+
+}
+
+
+
+function testSound(buttonID) {
+    frequency = document.getElementById('frequency').value;
+    bass = document.getElementById('bass').value;
+    mid = document.getElementById('mid').value;
+    treble = document.getElementById('treble').value;
+    duration = document.getElementById('duration').value;
+    console.log(buttonID, frequency, bass, mid, treble);
+    myTone = new Tone(frequency, duration, buttonID, bass, mid, treble);
+    myTone.play();
+
+}
+
+
+
+</script>
+</body>
+
+</html>
