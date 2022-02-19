@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blip Tester - Passive</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+        }
+        
+        main {
+            background-color: yellow;
+            margin: 50px;
+            margin-left: auto;
+            margin-right: auto;
+            width: 50%;
+            width: 320px;
+            border: 1px solid grey;
+            border-radius: 5px;
+        }
+        
+        main * {
+            padding: 3px;
+            margin: 3px;
+            border-radius: 5px;
+        }
+        
+        button {
+            background-color: green;
+            color: white;
+        }
+        
+        pre {
+            width: 100%;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Blip Tester - Passive</h1>
+        <hr>
+        <div>
+            <label for="frequency">Freq (Hz)</label>
+            <input type="number" name="frequency" id="frequency" value="440" onchange="updateFrequencies()">
+        </div>
+
+        <div>
+            <label for="bass">Bass</label>
+            <input type="number" name="bass" id="bass" value="10" , min="0" max="10" onchange="updateFrequencies()">
+            <span>Freq</span><span id="bassfreq">30</span>
+        </div>
+
+        <div>
+            <label for="mid">Mid</label>
+            <input type="number" name="mid" id="mid" value="10" , min="0" max="10" onchange="updateFrequencies()">
+            <span>Freq</span><span id="midfreq">1200</span>Q<span id="midq">1</span>
+        </div>
+
+        <div>
+            <label for="treble">Treb</label>
+            <input type="number" name="treble" id="treble" value="10" , min="0" max="10" onchange="updateFrequencies()">
+            <span>Freq</span><span id="treblefreq">16000</span>
+        </div>
+
+        <div>
+            <label for="duration">Duration (ms)</label>
+            <input type="number" name="duration" id="duration" value="200" min="0" max="10000" onchange="updateFrequencies()">
+        </div>
+
+        <div>
+            <button id='sine' onclick='testSound(this.id)'>Sine</button>
+            <button id='square' onclick='testSound(this.id)'>Square</button>
+            <button id='sawtooth' onclick='testSound(this.id)'>Sawtooth</button>
+            <button id='triangle' onclick='testSound(this.id)'>Triangle</button>
+        </div>
+        <hr>
+        <div>
+            <p>This will play simple tones at a given frequency of the selected waveform. You can also adjust the eq. The main purpose of the app is to test out short simple sounds made with the default Web Audio Oscillator. These short simple sounds can
+                be used for fire, bleep, click, motor revs, creeping, etc in lightweight video games. It allows one to implement very simplistic sounds in browser based video games that are very lightweight.</p>
+            <p>
+                <hr> See the source code for making an instance of a "Tone", which has .play() and .stop() as methods.
+            </p>
+            <p>Note: To adjust the eq settings, you can set values from 0-10 in the bass mid and treble. In this page, the mid frequency is set to 1200hz and the range of q values is 0.1 to 1.</p>
+            <p>However, the function being called has the following parameters:</p>
+            <pre>
+class Tone {
+    constructor(
+        frequencyHz = 440,
+        durationMS = 1000,
+        type = "sine",
+        bass = 0,
+        mid = 0,
+        treble = 0,
+        bassCutoff = 1000,
+        trebleCutoff = 1000,
+        midFrequency = 1200,
+        lowestMidQ = 0.1,
+        highestMidQ = 1){ etc }}
+            </pre>
+        </div>
+
+    </main>
+
+    <!-- // typs are "sine", "square", "sawtooth", "triangle" and "custom". The default is "sine". -->
+    <script>
+        class Tone {
+            constructor(frequencyHz = 440, durationMS = 1000, type = "sine", bass = 0, mid = 0, treble = 0, bassCutoff = 1000, trebleCutoff = 1000, midFrequency = 1200, lowestMidQ = 0.1, highestMidQ = 1) {
+                this.frequencyHz = frequencyHz;
+                this.durationMS = durationMS;
+                this.type = type;
+                this.bass = bass;
+                this.mid = mid;
+                this.treble = treble;
+                this.bassCutoff = bassCutoff;
+                this.trebleCutoff = trebleCutoff;
+                this.midFrequency = midFrequency;
+                this.lowestMidQ = lowestMidQ;
+                this.highestMidQ = highestMidQ;
+
+                //convert values of 0 to 10 to cutoff frequencies for bass/treble and q for mid.
+                ////////////////////////////////////////////////////////////////////////////////
+                // this.trebleCutoff = 1000;
+                this.trebleCutoff = (16000 - this.trebleCutoff) * this.treble / 10 + 1000;
+                this.trebleCutoff = Math.round(this.trebleCutoff);
+
+                // this.bassCutoff = 1000;
+                this.bassCutoff = (30 - this.bassCutoff) * this.bass / 10 + 1000;
+                this.bassCutoff = Math.round(this.bassCutoff);
+                // this.midFrequency = 1000;
+                // this.highestMidQ = 1;
+                // this.lowestMidQ = 0.1;
+
+                //y = (1-0.1)/10 + 0.1
+
+                this.midQValue = (this.highestMidQ - this.lowestMidQ) * this.mid / 10 + this.lowestMidQ;
+                this.midQValue = parseFloat(this.midQValue.toPrecision(2));
+
+                this.midFrequency = Math.round(this.midFrequency);
+                ///////////////////////////////////////////////////////////////////////////////
+
+                this.audioCtx = new(window.AudioContext || window.webkitAudioContext);
+                this.oscillator = this.audioCtx.createOscillator();
+                this.oscillator.frequency.setValueAtTime(this.frequencyHz, this.audioCtx.currentTime);
+                this.oscillator.type = this.type;
+                this.gainControl = this.audioCtx.createGain();
+                this.gainControl.gain.setValueAtTime(0, this.audioCtx.currentTime);
+
+                this.bassControl = this.audioCtx.createBiquadFilter();
+                this.bassControl.type = "highpass";
+                this.bassControl.frequency.setValueAtTime(this.bassCutoff, this.audioCtx.currentTime);
+
+                this.midControl = this.audioCtx.createBiquadFilter();
+                this.midControl.type = "notch";
+                this.midControl.Q.setValueAtTime(this.midQValue, this.audioCtx.currentTime);
+                this.midControl.frequency.setValueAtTime(this.midFrequency, this.audioCtx.currentTime);
+
+                this.trebleControl = this.audioCtx.createBiquadFilter();
+                this.trebleControl.type = "lowpass";
+                this.trebleControl.frequency.setValueAtTime(this.trebleCutoff, this.audioCtx.currentTime);
+
+                //"sine", "square", "sawtooth", "triangle" and "custom". The default is "sine".
+                this.oscillator.connect(this.bassControl);
+                this.bassControl.connect(this.midControl);
+                this.midControl.connect(this.trebleControl);
+                this.trebleControl.connect(this.gainControl);
+                this.gainControl.connect(this.audioCtx.destination);
+                this.oscillator.start();
+
+            }
+
+            play() {
+                //console.log(this.cancelStop === undefined);
+                if (this.cancelStop === undefined) {
+                    //do nothing
+                } else {
+                    clearTimeout(this.cancelStop);
+                }
+                this.gainControl.gain.cancelScheduledValues(this.audioCtx.currentTime);
+                //prevents abrupt click sound by fading into sound over 30ms
+                this.gainControl.gain.setValueAtTime(this.gainControl.gain.value, this.audioCtx.currentTime);
+                this.gainControl.gain.linearRampToValueAtTime(1, this.audioCtx.currentTime + 0.03);
+                this.cancelStop = setTimeout(() => {
+                    this.gainControl.gain.setValueAtTime(this.gainControl.gain.value, this.audioCtx.currentTime);
+                    this.gainControl.gain.linearRampToValueAtTime(0, this.audioCtx.currentTime + 0.03);
+                }, this.durationMS - 30);
+            }
+
+            stop() {
+                clearTimeout(this.cancelStop);
+                //prevents abrupt click sound by fading out sound over 30ms
+                this.gainControl.gain.setValueAtTime(this.gainControl.gain.value, this.audioCtx.currentTime);
+                this.gainControl.gain.linearRampToValueAtTime(0, this.audioCtx.currentTime + 0.03);
+            }
+        }
+
+        function updateFrequencies() {
+            frequency = document.getElementById('frequency').value;
+            bass = document.getElementById('bass').value;
+            mid = document.getElementById('mid').value;
+            treble = document.getElementById('treble').value;
+            duration = document.getElementById('duration').value;
+            myToneNoPlay = new Tone(frequency, 0, "sine", bass, mid, treble);
+            document.getElementById("bassfreq").innerHTML = myToneNoPlay.bassCutoff;
+            document.getElementById("midfreq").innerHTML = myToneNoPlay.midFrequency;
+            document.getElementById("midq").innerHTML = myToneNoPlay.midQValue;
+            document.getElementById("treblefreq").innerHTML = myToneNoPlay.trebleCutoff;
+        }
+
+        function testSound(buttonID) {
+            frequency = document.getElementById('frequency').value;
+            bass = document.getElementById('bass').value;
+            mid = document.getElementById('mid').value;
+            treble = document.getElementById('treble').value;
+            duration = document.getElementById('duration').value;
+            console.log(" ");
+            console.log("type", buttonID, "frequency", frequency, "bass", bass, "mid", mid, "treble", treble);
+            console.log("---------------------------------------------------")
+            myTone = new Tone(frequency, duration, buttonID, bass, mid, treble);
+
+            console.log("bass rolloff frequency: ", myTone.bassCutoff);
+            console.log("mid frequency: ", myTone.midFrequency)
+            console.log("midQ: ", myTone.midQValue);
+            console.log("treble", myTone.trebleCutoff);
+            updateFrequencies();
+
+            myTone.play();
+
+        }
+    </script>
+</body>
+
+</html>
